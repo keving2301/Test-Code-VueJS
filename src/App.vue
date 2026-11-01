@@ -15,7 +15,7 @@
 
     <ul v-if="products.length" class="grid" aria-label="Products">
       <li v-for="(product, index) in products" :key="product.ProductID">
-        <product-card :product="product" @open="open(index, $event)" />
+        <product-card :product="product" :priority="index < 4" @open="open(index, $event)" />
       </li>
     </ul>
     <p v-else class="empty">No products in this line sheet yet.</p>

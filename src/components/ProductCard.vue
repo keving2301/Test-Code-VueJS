@@ -1,7 +1,7 @@
 <template>
   <button type="button" class="card" :aria-label="`${product.ItemName}, ${price}. Show details`" @click="$emit('open', $event.currentTarget)">
     <span class="card__image">
-      <img ref="img" :src="product.PhotoName" alt="" width="960" height="1200" loading="lazy" decoding="async" :class="{ 'is-ready': ready }" @load="ready = true" />
+      <img ref="img" :src="product.PhotoName" alt="" width="960" height="1200" :loading="priority ? 'eager' : 'lazy'" :fetchpriority="priority ? 'high' : 'auto'" decoding="async" :class="{ 'is-ready': ready }" @load="ready = true" />
     </span>
     <span class="card__name">{{ product.ItemName }}</span>
     <span class="card__meta">
@@ -18,9 +18,13 @@ export default {
   name: 'ProductCard',
   props: {
     product: { type: Object, required: true },
+    // The first row is above the fold: load it at once instead of lazily.
+    priority: { type: Boolean, default: false },
   },
   emits: ['open'],
-  data: () => ({ ready: false }),
+  data() {
+    return { ready: this.priority };
+  },
   mounted() {
     if (this.$refs.img && this.$refs.img.complete) this.ready = true;
   },
