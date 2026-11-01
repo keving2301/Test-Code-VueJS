@@ -1,7 +1,7 @@
 <template>
   <button type="button" class="card" :aria-label="`${product.ItemName}, ${price}. Show details`" @click="$emit('open', $event.currentTarget)">
     <span class="card__image">
-      <img :src="product.PhotoName" alt="" width="960" height="1200" loading="lazy" decoding="async" />
+      <img ref="img" :src="product.PhotoName" alt="" width="960" height="1200" loading="lazy" decoding="async" :class="{ 'is-ready': ready }" @load="ready = true" />
     </span>
     <span class="card__name">{{ product.ItemName }}</span>
     <span class="card__meta">
@@ -20,6 +20,10 @@ export default {
     product: { type: Object, required: true },
   },
   emits: ['open'],
+  data: () => ({ ready: false }),
+  mounted() {
+    if (this.$refs.img && this.$refs.img.complete) this.ready = true;
+  },
   computed: {
     price() {
       return formatMoney(this.product.BasePrice);
@@ -60,6 +64,12 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.card__image img.is-ready {
+  opacity: 1;
 }
 
 .card__name {
@@ -70,9 +80,15 @@ export default {
   line-height: 1.35;
 }
 
-.card:hover .card__name {
+.card__name {
   text-decoration: underline;
+  text-decoration-color: transparent;
   text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease-out;
+}
+
+.card:hover .card__name {
+  text-decoration-color: currentColor;
 }
 
 .card__meta {
@@ -90,6 +106,13 @@ export default {
 .card__price {
   font-weight: 550;
   font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card__image img,
+  .card__name {
+    transition: none;
+  }
 }
 
 @media (max-width: 599px) {

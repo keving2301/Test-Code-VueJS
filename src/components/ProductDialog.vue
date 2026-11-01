@@ -1,39 +1,39 @@
 <template>
   <dialog ref="dialog" class="dialog" aria-labelledby="product-title" @cancel.prevent="close" @click="onBackdrop" @keydown="onKeydown">
-    <div v-if="product" class="dialog__panel">
+    <div v-if="last" class="dialog__panel">
       <button ref="closeButton" type="button" class="icon-button dialog__close" aria-label="Close details" @click="close">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
       </button>
       <div class="dialog__image">
-        <img :src="product.PhotoName" :alt="product.ItemName" width="960" height="1200" />
+        <img :key="last.ProductID" :src="last.PhotoName" :alt="last.ItemName" width="960" height="1200" :class="{ 'is-ready': imageReady }" @load="imageReady = true" />
       </div>
 
       <div class="dialog__info">
-        <p class="dialog__id">Item {{ product.ItemID }}</p>
+        <p class="dialog__id">Item {{ last.ItemID }}</p>
 
-        <h2 id="product-title" class="dialog__title">{{ product.ItemName }}</h2>
+        <h2 id="product-title" class="dialog__title">{{ last.ItemName }}</h2>
         <p class="dialog__price">{{ price }} <span class="dialog__price-note">wholesale</span></p>
 
-        <p class="dialog__description" :class="{ 'dialog__description--empty': !product.Description }">
-          {{ product.Description || 'No description yet. Email us for details on this piece.' }}
+        <p class="dialog__description" :class="{ 'dialog__description--empty': !last.Description }">
+          {{ last.Description || 'No description yet. Email us for details on this piece.' }}
         </p>
 
         <dl class="specs">
           <div class="specs__row">
             <dt>Dimensions</dt>
-            <dd>{{ product.Dimensions || 'On request' }}</dd>
+            <dd>{{ last.Dimensions || 'On request' }}</dd>
           </div>
-          <div v-if="product.udf16" class="specs__row">
+          <div v-if="last.udf16" class="specs__row">
             <dt>Color</dt>
-            <dd>{{ product.udf16 }}</dd>
+            <dd>{{ last.udf16 }}</dd>
           </div>
-          <div v-if="product.udf17" class="specs__row">
+          <div v-if="last.udf17" class="specs__row">
             <dt>Material</dt>
-            <dd>{{ product.udf17 }}</dd>
+            <dd>{{ last.udf17 }}</dd>
           </div>
-          <div v-if="product.OrderMinimumQuantity" class="specs__row">
+          <div v-if="last.OrderMinimumQuantity" class="specs__row">
             <dt>Minimum order</dt>
-            <dd>{{ product.OrderMinimumQuantity }} {{ product.OrderMinimumQuantity === 1 ? 'unit' : 'units' }}</dd>
+            <dd>{{ last.OrderMinimumQuantity }} {{ last.OrderMinimumQuantity === 1 ? 'unit' : 'units' }}</dd>
           </div>
         </dl>
 
@@ -44,7 +44,7 @@
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
             Previous
           </button>
-          <span class="dialog__count" aria-live="polite">{{ position }} of {{ total }}</span>
+          <span class="dialog__count" aria-live="polite">{{ lastPosition }} of {{ total }}</span>
           <button type="button" class="text-button" :disabled="!hasNext" @click="$emit('step', 1)">
             Next
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -65,29 +65,44 @@ export default {
     position: { type: Number, default: 0 },
     total: { type: Number, default: 0 },
     email: { type: String, default: '' },
+    returnTo: { type: Object, default: null },
   },
   emits: ['close', 'step'],
   data: () => ({
     opener: null,
+    // The product on screen. It stays until the dialog has faded out.
+    last: null,
+    lastPosition: 0,
+    imageReady: false,
+    closeTimer: null,
   }),
   computed: {
     price() {
-      return this.product ? formatMoney(this.product.BasePrice) : '';
+      return this.last ? formatMoney(this.last.BasePrice) : '';
     },
     hasPrevious() {
-      return this.position > 1;
+      return this.lastPosition > 1;
     },
     hasNext() {
-      return this.position < this.total;
+      return this.lastPosition < this.total;
     },
     mailto() {
-      if (!this.product) return '#';
-      const subject = encodeURIComponent(`Order: ${this.product.ItemID} ${this.product.ItemName}`);
+      if (!this.last) return '#';
+      const subject = encodeURIComponent(`Order: ${this.last.ItemID} ${this.last.ItemName}`);
       return `mailto:${this.email}?subject=${subject}`;
     },
   },
   watch: {
     product(next, previous) {
+      if (next) {
+        this.imageReady = false;
+        this.last = next;
+        this.lastPosition = this.position;
+        this.$nextTick(() => {
+          const img = this.$refs.dialog && this.$refs.dialog.querySelector('.dialog__image img');
+          if (img && img.complete) this.imageReady = true;
+        });
+      }
       if (next && !previous) this.show();
       if (!next && previous) this.hide();
     },
@@ -97,7 +112,9 @@ export default {
   },
   methods: {
     show() {
-      this.opener = document.activeElement;
+      clearTimeout(this.closeTimer);
+      this.$refs.dialog.classList.remove('is-closing');
+      this.opener = this.returnTo || document.activeElement;
       document.documentElement.classList.add('is-locked');
       this.$nextTick(() => {
         this.$refs.dialog.showModal();
@@ -105,10 +122,22 @@ export default {
       });
     },
     hide() {
-      if (this.$refs.dialog.open) this.$refs.dialog.close();
+      const dialog = this.$refs.dialog;
       document.documentElement.classList.remove('is-locked');
-      if (this.opener && document.contains(this.opener)) this.opener.focus();
-      this.opener = null;
+      const finish = () => {
+        dialog.classList.remove('is-closing');
+        if (dialog.open) dialog.close();
+        this.last = null;
+        if (this.opener && document.contains(this.opener)) this.opener.focus();
+        this.opener = null;
+      };
+      if (!dialog.open || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        finish();
+        return;
+      }
+      // Fade out first, then close the native dialog.
+      dialog.classList.add('is-closing');
+      this.closeTimer = setTimeout(finish, 150);
     },
     close() {
       this.$emit('close');
@@ -163,7 +192,19 @@ export default {
 }
 
 .dialog[open] {
-  animation: dialog-in 160ms ease-out;
+  animation: dialog-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dialog[open]::backdrop {
+  animation: backdrop-in 200ms ease-out;
+}
+
+.dialog.is-closing {
+  animation: dialog-out 150ms ease-in forwards;
+}
+
+.dialog.is-closing::backdrop {
+  animation: backdrop-out 150ms ease-in forwards;
 }
 
 @keyframes dialog-in {
@@ -174,6 +215,25 @@ export default {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
   }
 }
 
@@ -195,6 +255,12 @@ export default {
   height: 100%;
   max-height: calc(100vh - 48px);
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.dialog__image img.is-ready {
+  opacity: 1;
 }
 
 .dialog__info {
@@ -333,6 +399,12 @@ export default {
   background: var(--well);
 }
 
+.icon-button,
+.text-button,
+.button {
+  transition: background-color 150ms ease-out;
+}
+
 .text-button:disabled {
   color: var(--muted);
   opacity: 0.5;
@@ -396,8 +468,18 @@ export default {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dialog[open] {
+  .dialog[open],
+  .dialog[open]::backdrop,
+  .dialog.is-closing,
+  .dialog.is-closing::backdrop {
     animation: none;
+  }
+
+  .dialog__image img,
+  .icon-button,
+  .text-button,
+  .button {
+    transition: none;
   }
 }
 </style>

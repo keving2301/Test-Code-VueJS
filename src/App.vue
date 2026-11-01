@@ -15,7 +15,7 @@
 
     <ul v-if="products.length" class="grid" aria-label="Products">
       <li v-for="(product, index) in products" :key="product.ProductID">
-        <product-card :product="product" @open="open(index)" />
+        <product-card :product="product" @open="open(index, $event)" />
       </li>
     </ul>
     <p v-else class="empty">No products in this line sheet yet.</p>
@@ -33,6 +33,7 @@
     :position="selectedIndex + 1"
     :total="products.length"
     :email="email"
+    :return-to="openerEl"
     @close="selectedIndex = -1"
     @step="step"
   />
@@ -53,6 +54,7 @@ export default {
     message: lineSheet.Message || '',
     products: Array.isArray(lineSheet.items) ? lineSheet.items : [],
     selectedIndex: -1,
+    openerEl: null,
   }),
   computed: {
     selected() {
@@ -60,7 +62,9 @@ export default {
     },
   },
   methods: {
-    open(index) {
+    open(index, element) {
+      // Safari does not focus a button when it is clicked, so the card that opened the dialog is passed along.
+      this.openerEl = element || null;
       this.selectedIndex = index;
     },
     step(direction) {
