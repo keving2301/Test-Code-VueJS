@@ -271,6 +271,9 @@ export default {
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   align-self: flex-start;
   margin-top: 24px;
   padding: 10px 20px;
@@ -313,12 +316,13 @@ export default {
 }
 
 .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   justify-content: center;
 }
 
 .text-button {
+  min-height: 44px;
   padding: 8px 10px;
   font-weight: 550;
   font-size: 0.9375rem;
@@ -350,6 +354,12 @@ export default {
     height: 100%;
     margin: 0;
     border-radius: 0;
+  }
+
+  @supports (height: 100dvh) {
+    .dialog {
+      max-height: 100dvh;
+    }
   }
 
   .dialog__panel {

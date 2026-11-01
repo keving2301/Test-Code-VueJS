@@ -92,6 +92,9 @@ button:focus-visible,
 }
 
 .masthead__contact {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: #fff;
   font-size: 0.9375rem;
   text-underline-offset: 3px;
