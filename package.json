@@ -1,5 +1,5 @@
 {
-  "name": "untitled",
+  "name": "products-page",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,6 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@fontsource-variable/instrument-sans": "5",
     "core-js": "^3.8.3",
     "vue": "^3.2.13"
   },
@@ -39,5 +40,9 @@
     "last 2 versions",
     "not dead",
     "not ie 11"
-  ]
+  ],
+  "description": "A product line sheet: a grid of products where each opens a detail dialog. Vue 3.",
+  "engines": {
+    "node": ">=22"
+  }
 }
